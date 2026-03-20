@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enter OTP – iSoftrend System</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(135deg,#0f1c3a 0%,#17284e 50%,#1e3a6e 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.wrap{width:100%;max-width:420px;}
+.logo{text-align:center;margin-bottom:28px;}
+.logo .icon{width:60px;height:60px;background:linear-gradient(135deg,#5da0f9,#2563eb);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;color:#fff;box-shadow:0 8px 24px rgba(37,99,235,.4);margin-bottom:12px;}
+.logo h1{color:#fff;font-size:22px;font-weight:800;}
+.logo p{color:rgba(255,255,255,.5);font-size:12.5px;margin-top:4px;}
+.card{background:#fff;border-radius:18px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.35);}
+.card h2{font-size:18px;font-weight:800;color:#12213f;margin-bottom:6px;}
+.card .sub{font-size:12.5px;color:#60708f;margin-bottom:6px;line-height:1.6;}
+.email-chip{display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:22px;}
+.otp-row{display:flex;gap:10px;justify-content:center;margin:24px 0;}
+.otp-row input{width:48px;height:56px;text-align:center;font-size:24px;font-weight:800;border:2px solid #e2e8f0;border-radius:12px;outline:none;font-family:'Manrope',sans-serif;color:#12213f;transition:border-color .15s,box-shadow .15s;background:#f8fafc;}
+.otp-row input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);background:#fff;}
+.otp-row input.filled{border-color:#2563eb;background:#fff;}
+.hidden-input{display:none;}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s;box-shadow:0 4px 14px rgba(37,99,235,.3);}
+.btn:hover{opacity:.92;}
+.resend-row{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:12.5px;color:#60708f;}
+.resend-row a{color:#2563eb;font-weight:600;text-decoration:none;}
+.resend-row a:hover{text-decoration:underline;}
+.back{text-align:center;margin-top:14px;font-size:12.5px;color:#60708f;}
+.back a{color:#2563eb;font-weight:600;text-decoration:none;}
+.alert{padding:11px 14px;border-radius:9px;font-size:12.5px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.alert-error{background:#fee2e2;color:#b91c1c;}
+.alert-success{background:#dcfce7;color:#15803d;}
+.alert-info{background:#cffafe;color:#0e7490;}
+.timer{font-weight:700;color:#2563eb;}
+.expired{color:#dc2626;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <div class="icon"><i class="fas fa-shield-halved"></i></div>
+    <h1>iSoftrend System</h1>
+    <p>OTP Verification</p>
+  </div>
+  <div class="card">
+    <h2>Enter OTP</h2>
+    <p class="sub">A 6-digit OTP has been sent to</p>
+    <span class="email-chip"><i class="fas fa-envelope" style="font-size:10px;"></i> {{ email }}</span>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'error' if category == 'error' else ('success' if category == 'success' else 'info') }}">
+          <i class="fas fa-{{ 'circle-xmark' if category == 'error' else ('circle-check' if category == 'success' else 'circle-info') }}"></i>
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" id="otpForm">
+      <input type="hidden" name="otp" id="otpHidden">
+      <div class="otp-row">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+      </div>
+      <button type="submit" class="btn" id="verifyBtn">
+        <i class="fas fa-check-circle"></i>Verify OTP
+      </button>
+    </form>
+
+    <div class="resend-row">
+      <span>OTP expires in: <span class="timer" id="countdown">10:00</span></span>
+      <a href="/forgot-password">Resend OTP</a>
+    </div>
+    <div class="back"><a href="/login"><i class="fas fa-arrow-left" style="font-size:11px;"></i> Back to Login</a></div>
+  </div>
+</div>
+
+<script>
+// OTP digit boxes
+const digits = document.querySelectorAll('.otp-digit');
+digits.forEach((inp, i) => {
+  inp.addEventListener('input', e => {
+    const val = e.target.value.replace(/\D/g, '');
+    e.target.value = val.slice(-1);
+    if(val && i < digits.length - 1) digits[i+1].focus();
+    updateHidden();
+    if(val) e.target.classList.add('filled'); else e.target.classList.remove('filled');
+  });
+  inp.addEventListener('keydown', e => {
+    if(e.key === 'Backspace' && !e.target.value && i > 0) {
+      digits[i-1].focus();
+      digits[i-1].value = '';
+      digits[i-1].classList.remove('filled');
+      updateHidden();
+    }
+  });
+  inp.addEventListener('paste', e => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+    pasted.split('').forEach((ch, j) => {
+      if(digits[j]) { digits[j].value = ch; digits[j].classList.add('filled'); }
+    });
+    updateHidden();
+    if(digits[Math.min(pasted.length, 5)]) digits[Math.min(pasted.length, 5)].focus();
+  });
+});
+digits[0].focus();
+
+function updateHidden() {
+  document.getElementById('otpHidden').value = Array.from(digits).map(d=>d.value).join('');
+}
+
+document.getElementById('otpForm').addEventListener('submit', e => {
+  const otp = document.getElementById('otpHidden').value;
+  if(otp.length < 6) { e.preventDefault(); alert('Please enter all 6 digits.'); }
+});
+
+// Countdown timer - 10 minutes
+let secs = 600;
+const cdEl = document.getElementById('countdown');
+const timer = setInterval(() => {
+  secs--;
+  if(secs <= 0) {
+    clearInterval(timer);
+    cdEl.textContent = 'Expired';
+    cdEl.className = 'expired';
+    document.getElementById('verifyBtn').disabled = true;
+    document.getElementById('verifyBtn').style.opacity = '.5';
+    return;
+  }
+  const m = Math.floor(secs/60).toString().padStart(2,'0');
+  const s = (secs%60).toString().padStart(2,'0');
+  cdEl.textContent = `${m}:${s}`;
+}, 1000);
+</script>
+</body>
+</html>

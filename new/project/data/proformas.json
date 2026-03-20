@@ -1,0 +1,79 @@
+[
+  {
+    "id": "4c512d79-29fd-4a99-8341-3fe86f7717f1",
+    "number": "PRO1001",
+    "doc_type": "proforma",
+    "date": "2026-02-24",
+    "expiry_date": "",
+    "due_date": "",
+    "customer_id": "c42e8dba-d71c-49e7-ae96-a33d729b3061",
+    "place_of_supply": "Gujarat (24)",
+    "reference": "",
+    "gst_enabled": true,
+    "items": [
+      {
+        "name": "jbj",
+        "description": "",
+        "hsn_sac": "",
+        "unit": "nos",
+        "qty": 1.0,
+        "rate": 15000.0,
+        "discount": 0.0,
+        "tax": 18.0,
+        "cgst": 1350.0,
+        "sgst": 1350.0,
+        "igst": 2700.0,
+        "amount": 17700.0
+      }
+    ],
+    "subtotal": 15000.0,
+    "total_tax": 2700.0,
+    "total": 17700.0,
+    "notes": "Looking forward for your business.",
+    "terms": "The complete design and delivery process for the Logo, Letterhead, and Visiting Card will require approximately 6-7 working days from the date of confirmation and content approval.\r\nThis includes concept creation, design revisions, and final file delivery in all required formats.\r\n\r\nIf you require a GST invoice, an additional 18% will be charged on the quoted amount.",
+    "status": "invoiced",
+    "payment_status": "unpaid"
+  },
+  {
+    "id": "4a48a150-eff6-4332-812e-248f3746111f",
+    "number": "ISS1003",
+    "doc_type": "proforma",
+    "date": "2026-03-18",
+    "expiry_date": "",
+    "due_date": "",
+    "payment_terms": "",
+    "customer_id": "4eae5808-4e8f-439b-90e7-85679c1cbb0e",
+    "place_of_supply": "Gujarat (24)",
+    "reference": "",
+    "gst_enabled": false,
+    "use_igst": false,
+    "items": [
+      {
+        "name": "kjn",
+        "description": "",
+        "hsn_sac": "",
+        "unit": "pcs",
+        "qty": 1.0,
+        "rate": 100000.0,
+        "discount": 0.0,
+        "tax": 0.0,
+        "cgst": 0.0,
+        "sgst": 0.0,
+        "igst": 0.0,
+        "amount": 100000.0
+      }
+    ],
+    "subtotal": 100000.0,
+    "total_tax": 0.0,
+    "total": 100000.0,
+    "notes": "Looking forward for your business.",
+    "terms": "The complete design and delivery process for the Logo, Letterhead, and Visiting Card will require approximately 6-7 working days from the date of confirmation and content approval.\r\nThis includes concept creation, design revisions, and final file delivery in all required formats.\r\n\r\nIf you require a GST invoice, an additional 18% will be charged on the quoted amount.",
+    "status": "invoiced",
+    "payment_status": "unpaid",
+    "amount_paid": 0.0,
+    "online_paid": 0.0,
+    "cash_paid": 0.0,
+    "balance_due": 0.0,
+    "source_quotation": "QUO260670"
+  }
+]

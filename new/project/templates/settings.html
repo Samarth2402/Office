@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block breadcrumb %}System Configuration{% endblock %}
+
+{% block content %}
+
+{% with msgs = get_flashed_messages(with_categories=true) %}
+{% if msgs %}
+{% for cat, msg in msgs %}
+<div style="background:{% if cat=='success' %}#dcfce7{% else %}#fee2e2{% endif %};border:1.5px solid {% if cat=='success' %}#86efac{% else %}#fca5a5{% endif %};border-radius:10px;padding:12px 18px;margin-bottom:16px;color:{% if cat=='success' %}#15803d{% else %}#b91c1c{% endif %};font-weight:600;display:flex;align-items:center;gap:10px;">
+  <i class="fas fa-{% if cat=='success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>{{ msg }}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<form method="POST" enctype="multipart/form-data">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+  <!-- FIXED COMPANY INFO (read-only) -->
+  <div class="card" style="grid-column:1/-1">
+    <div class="card-hd">
+      <div class="card-title"><i class="fas fa-lock" style="color:#dc2626"></i>Company Identity <span style="background:#fee2e2;color:#b91c1c;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:8px;">FIXED — NOT EDITABLE</span></div>
+    </div>
+    <div class="card-bd">
+      <div style="background:#fff7f7;border:1.5px solid #fecaca;border-radius:10px;padding:16px;margin-bottom:12px;">
+        <p style="font-size:12px;color:#b91c1c;font-weight:600;margin-bottom:12px;"><i class="fas fa-info-circle"></i> These details are hardcoded and cannot be changed. They appear on every document.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="fg"><label>Company Name</label><div class="fc" style="background:#f8f8f8;color:#64748b;cursor:not-allowed;">{{ fixed.company_name }}</div></div>
+          <div class="fg"><label>GSTIN</label><div class="fc" style="background:#f8f8f8;color:#64748b;cursor:not-allowed;font-family:monospace;">{{ fixed.gstin }}</div></div>
+          <div class="fg" style="grid-column:1/-1"><label>Address</label><div class="fc" style="background:#f8f8f8;color:#64748b;cursor:not-allowed;">{{ fixed.address }}</div></div>
+          <div class="fg"><label>State</label><div class="fc" style="background:#f8f8f8;color:#64748b;cursor:not-allowed;">{{ fixed.state }}</div></div>
+          <div class="fg"><label>State Code</label><div class="fc" style="background:#f8f8f8;color:#64748b;cursor:not-allowed;">{{ fixed.state_code }}</div></div>
+          <div class="fg"><label>Phone</label><div class="fc" style="background:#f8f8f8;color:#64748b;cursor:not-allowed;">{{ fixed.phone }}</div></div>
+          <div class="fg"><label>Email</label><div class="fc" style="background:#f8f8f8;color:#64748b;cursor:not-allowed;">{{ fixed.email }}</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANK DETAILS (editable) -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-university" style="color:#2563eb"></i>Bank Details</div></div>
+    <div class="card-bd">
+      <div class="frow" style="grid-template-columns:1fr;gap:12px;">
+        <div class="fg"><label>Bank Name</label><input type="text" name="bank_name" class="fc" value="{{ settings.bank_name }}"></div>
+        <div class="fg"><label>Account Number</label><input type="text" name="account_number" class="fc" value="{{ settings.account_number }}" style="font-family:monospace;"></div>
+        <div class="fg"><label>Account Name</label><input type="text" name="account_name" class="fc" value="{{ settings.account_name }}"></div>
+        <div class="fg"><label>Branch</label><input type="text" name="branch" class="fc" value="{{ settings.branch }}"></div>
+        <div class="fg"><label>IFSC Code</label><input type="text" name="ifsc" class="fc" value="{{ settings.ifsc }}" style="text-transform:uppercase;font-family:monospace;"></div>
+        <div class="fg"><label>UPI ID</label><input type="text" name="upi" class="fc" value="{{ settings.upi }}"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGNATURE (changeable) -->
+  <div class="card" style="display:flex;flex-direction:column;">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-signature" style="color:#7c3aed"></i>Authorised Signature <span style="background:#ede9fe;color:#6d28d9;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:8px;">CHANGEABLE</span></div></div>
+    <div class="card-bd" style="flex:1;display:flex;flex-direction:column;gap:14px;">
+      <p style="font-size:12.5px;color:var(--mut);">Upload a PNG with transparent background for best results. Appears on all generated PDFs.</p>
+      <div class="fg"><label>Upload New Signature</label><input type="file" name="signature" class="fc" accept="image/png,image/jpeg,image/jpg"></div>
+      <div style="text-align:center;padding:14px;background:#f8fafc;border-radius:10px;border:1.5px solid var(--brd);">
+        <div style="font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Current Signature</div>
+        {% if settings.signature %}
+        <img src="/static/uploads/signatures/{{ settings.signature }}" style="max-width:200px;max-height:80px;object-fit:contain;" onerror="this.style.display='none'">
+        {% else %}
+        <span style="color:var(--mut2);font-size:12px;">No signature uploaded</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPANY LOGO (changeable) -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-image" style="color:#0ea5e9"></i>Company Logo <span style="background:#e0f2fe;color:#0369a1;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:8px;">CHANGEABLE</span></div></div>
+    <div class="card-bd" style="display:flex;flex-direction:column;gap:14px;">
+      <p style="font-size:12.5px;color:var(--mut);">Logo appears in the PDF header and as a subtle watermark. PNG with white/transparent background recommended.</p>
+      <div class="fg"><label>Upload New Logo</label><input type="file" name="logo" class="fc" accept="image/png,image/jpeg,image/jpg"></div>
+      <div style="text-align:center;padding:14px;background:#1a2744;border-radius:10px;border:1.5px solid var(--brd);">
+        <div style="font-size:10px;font-weight:700;color:#aab;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Current Logo (on dark bg)</div>
+        {% if settings.logo %}
+        <img src="/static/uploads/{{ settings.logo }}" style="max-width:180px;max-height:60px;object-fit:contain;" onerror="this.style.display='none'">
+        {% else %}
+        <span style="color:#aab;font-size:11px;">No logo uploaded — add logo file at static/img/logo.png</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- CASHFREE PAYMENT GATEWAY -->
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="fas fa-credit-card" style="color:#16a34a"></i>Cashfree Payment Gateway</div>
+      <a href="https://merchant.cashfree.com" target="_blank" class="btn bout bsm" style="font-size:11px;">Get API Keys <i class="fas fa-external-link-alt"></i></a>
+    </div>
+    <div class="card-bd">
+      <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#15803d;">
+        <i class="fas fa-info-circle"></i> Add your Cashfree credentials to enable one-click payment links on invoices. 
+        Set your webhook URL in Cashfree dashboard to: <code style="background:#dcfce7;padding:1px 5px;border-radius:4px;">{{ request.host_url }}cashfree/webhook</code>
+      </div>
+      <div class="frow" style="grid-template-columns:1fr;gap:12px;">
+        <div class="frow f2">
+          <div class="fg">
+            <label>App ID</label>
+            <input type="text" name="cashfree_app_id" class="fc" value="{{ settings.cashfree_app_id or '' }}" placeholder="Your Cashfree App ID" style="font-family:monospace;">
+          </div>
+          <div class="fg">
+            <label>Environment</label>
+            <select name="cashfree_env" class="fc">
+              <option value="sandbox" {{ 'selected' if not settings.cashfree_env or settings.cashfree_env=='sandbox' }}>Sandbox (Testing)</option>
+              <option value="production" {{ 'selected' if settings.cashfree_env=='production' }}>Production (Live)</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Secret Key</label>
+          <input type="password" name="cashfree_secret" class="fc" value="{{ settings.cashfree_secret or '' }}" placeholder="Your Cashfree Secret Key" style="font-family:monospace;" autocomplete="new-password">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GST API KEY -->
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="fas fa-search" style="color:#0891b2"></i>GST Lookup API</div>
+      <a href="https://sheet.gstincheck.co.in" target="_blank" class="btn bout bsm" style="font-size:11px;">Get Free Key <i class="fas fa-external-link-alt"></i></a>
+    </div>
+    <div class="card-bd">
+      <div style="background:#ecfeff;border:1.5px solid #a5f3fc;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#0e7490;">
+        <i class="fas fa-info-circle"></i> Without an API key, GSTIN lookup still auto-detects the state. With an API key, full company details (name, address) will be fetched automatically.
+      </div>
+      <div class="fg">
+        <label>GSTINCheck API Key (optional)</label>
+        <input type="text" name="gst_api_key" class="fc" value="{{ settings.gst_api_key or '' }}" placeholder="Your GSTINCheck API key" style="font-family:monospace;">
+      </div>
+    </div>
+  </div>
+
+  <!-- DEFAULT TERMS -->
+  <div class="card" style="grid-column:1/-1">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-file-contract" style="color:#2563eb"></i>Default Terms &amp; Conditions</div></div>
+    <div class="card-bd">
+      <div class="fg">
+        <label>Pre-filled on all new documents</label>
+        <textarea name="terms" class="fc" rows="6">{{ settings.terms }}</textarea>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:18px;display:flex;gap:10px;align-items:center;">
+  <button type="submit" class="btn bp" style="padding:11px 28px;font-size:14px;"><i class="fas fa-save"></i>Save Settings</button>
+  <a href="/" class="btn bout">Cancel</a>
+  <span style="font-size:11.5px;color:var(--mut);margin-left:8px;"><i class="fas fa-shield-alt"></i> Company identity fields are protected and cannot be modified.</span>
+</div>
+</form>
+
+{% endblock %}

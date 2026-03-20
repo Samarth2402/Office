@@ -1,0 +1,777 @@
+{% extends 'base.html' %}
+{% set title_map = {'quotation':'New Quotation','proforma':'New Proforma Invoice','invoice':'New Tax Invoice'} %}
+{% set edit_map = {'quotation':'Edit Quotation','proforma':'Edit Proforma','invoice':'Edit Invoice'} %}
+{% block title %}{{ edit_map[doc_type] if doc else title_map[doc_type] }}{% endblock %}
+{% block page_title %}{{ edit_map[doc_type] if doc else title_map[doc_type] }}{% endblock %}
+{% block breadcrumb %}{{ doc_type|title }} Management{% endblock %}
+
+{% block topbar_actions %}
+{% if doc %}
+<a href="/preview/{{ doc_type }}/{{ doc.id }}" class="btn bout bsm" target="_blank"><i class="fas fa-eye"></i>Preview PDF</a>
+<a href="/pdf/{{ doc_type }}/{{ doc.id }}" class="btn bout bsm" target="_blank"><i class="fas fa-file-pdf"></i>Download PDF</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="POST" id="docForm">
+<input type="hidden" name="number" value="{{ doc.number if doc else next_num }}">
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start;">
+
+<!-- LEFT -->
+<div style="display:flex;flex-direction:column;gap:16px;">
+
+  <!-- GST TOGGLE -->
+  <div class="card">
+    <div class="card-bd" style="padding:14px 18px;">
+      <div class="tsw-row" style="margin-bottom:0;">
+        <label class="toggl">
+          <input type="checkbox" name="gst_enabled" id="gstToggle" {{ 'checked' if not doc or doc.get('gst_enabled', True) }} onchange="updateGSTStatus()">
+          <span class="tsldr"></span>
+        </label>
+        <span class="tl">GST Invoice</span>
+        <span class="ts" id="gstStatus">GST Enabled ✓</span>
+        <span class="th">Turn OFF for non-GST documents</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOC DETAILS -->
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="fas fa-info-circle" style="color:#2563eb"></i>Document Details</div>
+      {% if doc %}<span class="badge bbl-b" style="font-size:12px;padding:4px 10px;font-family:'JetBrains Mono',monospace;">{{ doc.number }}</span>{% endif %}
+    </div>
+    <div class="card-bd">
+      <div class="frow f2">
+        <div class="fg">
+          <label>Document Number</label>
+          <div style="padding:9px 13px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13.5px;font-weight:700;color:#2563eb;font-family:'JetBrains Mono',monospace;">{{ doc.number if doc else next_num }}</div>
+        </div>
+        <div class="fg">
+          <label>Date *</label>
+          <input type="date" name="date" class="fc" required value="{{ doc.date if doc else today }}">
+        </div>
+        {% if doc_type == 'quotation' %}
+        <div class="fg">
+          <label>Expiry Date</label>
+          <input type="date" name="expiry_date" class="fc" value="{{ doc.expiry_date if doc else '' }}">
+        </div>
+        {% endif %}
+        {% if doc_type == 'invoice' %}
+        <div class="fg">
+          <label>Payment Terms *</label>
+          <select name="payment_terms" class="fc" id="paymentTerms" onchange="applyPaymentTerms()" required>
+            <option value="due_on_receipt" {{ 'selected' if doc and doc.payment_terms=='due_on_receipt' }}>Due on Receipt</option>
+            <option value="net_15" {{ 'selected' if (doc and doc.payment_terms=='net_15') or (not doc) }}>Net 15 Days</option>
+            <option value="net_30" {{ 'selected' if doc and doc.payment_terms=='net_30' }}>Net 30 Days</option>
+            <option value="net_40" {{ 'selected' if doc and doc.payment_terms=='net_40' }}>Net 40 Days</option>
+            <option value="net_60" {{ 'selected' if doc and doc.payment_terms=='net_60' }}>Net 60 Days</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Due Date *</label>
+          <input type="date" name="due_date" id="dueDate" class="fc" required value="{{ doc.due_date if doc else '' }}" onchange="markDueDateManual()">
+        </div>
+        {% endif %}
+        <div class="fg">
+          <label>Status</label>
+          <select name="status" class="fc">
+            <option value="draft" {{ 'selected' if not doc or doc.status=='draft' }}>Draft</option>
+            <option value="sent" {{ 'selected' if doc and doc.status=='sent' }}>Sent</option>
+            <option value="approved" {{ 'selected' if doc and doc.status=='approved' }}>Approved</option>
+            <option value="cancelled" {{ 'selected' if doc and doc.status=='cancelled' }}>Cancelled</option>
+            {% if doc_type == 'quotation' %}
+            <option value="converted" {{ 'selected' if doc and doc.status=='converted' }}>Converted</option>
+            <option value="invoiced" {{ 'selected' if doc and doc.status=='invoiced' }}>Invoiced</option>
+            {% endif %}
+          </select>
+        </div>
+        {% if doc_type == 'invoice' %}
+        <div class="fg">
+          <label>Payment Status *</label>
+          <select name="payment_status" class="fc" id="paymentStatus" onchange="updatePaymentFields()">
+            <option value="unpaid" {{ 'selected' if not doc or doc.payment_status=='unpaid' }}>Unpaid (None Received)</option>
+            <option value="partial" {{ 'selected' if doc and doc.payment_status=='partial' }}>Partially Paid (Half/Some)</option>
+            <option value="paid" {{ 'selected' if doc and doc.payment_status=='paid' }}>Fully Paid</option>
+          </select>
+        </div>
+        <div class="fg" id="amountPaidWrap">
+          <label>Amount Received</label>
+          <input type="number" name="amount_paid" id="amountPaid" class="fc" min="0" step="0.01" value="{{ doc.amount_paid if doc else 0 }}" oninput="updatePaymentFields()" placeholder="0.00" readonly>
+          <div style="font-size:11px;color:var(--mut);margin-top:4px;">Balance: <strong id="balanceDueText">₹0.00</strong></div>
+        </div>
+        <div class="fg" id="onlinePaidWrap" style="display:none;">
+          <label>Paid Online *</label>
+          <input type="number" name="online_paid" id="onlinePaid" class="fc" min="0" step="0.01" value="{{ doc.online_paid if doc else 0 }}" oninput="updatePaymentFields()" placeholder="0.00">
+        </div>
+        <div class="fg" id="cashPaidWrap" style="display:none;">
+          <label>Paid Cash *</label>
+          <input type="number" name="cash_paid" id="cashPaid" class="fc" min="0" step="0.01" value="{{ doc.cash_paid if doc else 0 }}" oninput="updatePaymentFields()" placeholder="0.00">
+        </div>
+        {% endif %}
+        <div class="fg">
+          <label>Place of Supply *</label>
+          <input type="text" name="place_of_supply" class="fc" required value="{{ doc.place_of_supply if doc else 'Gujarat (24)' }}">
+        </div>
+        <div class="fg">
+          <label>Reference #</label>
+          <input type="text" name="reference" class="fc" value="{{ doc.reference if doc else '' }}" placeholder="PO/Ref number">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENT SECTION -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-user" style="color:#2563eb"></i>Client Details</div></div>
+    <div class="card-bd">
+      <div class="frow f2">
+        <div class="fg">
+          <label>Select Existing Client</label>
+          <select name="customer_id" class="fc" id="custSelect" onchange="loadExistingClient()">
+            <option value="">-- Select Client --</option>
+            {% for c in customers %}
+            <option value="{{ c.id }}"
+              data-name="{{ c.name }}" data-company="{{ c.company }}" data-type="{{ c.type }}"
+              data-gstin="{{ c.gstin }}" data-state="{{ c.state }}" data-state-code="{{ c.state_code }}"
+              data-address="{{ c.address }}" data-email="{{ c.email }}" data-phone="{{ c.phone }}"
+              {{ 'selected' if doc and doc.customer_id == c.id }}>
+              {{ c.name }}{% if c.company %} ({{ c.company }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fg">
+          <label>Client Type</label>
+          <select name="new_customer_type" class="fc" id="clientType" onchange="toggleGSTField()">
+            <option value="individual">Individual</option>
+            <option value="business">Business</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="clibox" id="clientBox">
+        <div class="clibox-title"><i class="fas fa-user-plus"></i> CLIENT DETAILS <span style="font-size:9px;opacity:.7;">(fill for new or auto-filled from selection)</span></div>
+        <div class="frow f2" style="gap:10px;">
+          <div class="fg">
+            <label>Client Name *</label>
+            <input type="text" name="new_customer_name" class="fc" id="cliName" placeholder="Full Name" required>
+          </div>
+          <div class="fg">
+            <label>Company Name</label>
+            <input type="text" name="new_customer_company" class="fc" id="cliCompany" placeholder="Company / Business Name">
+          </div>
+          <div class="fg" id="gstinField">
+            <label>GSTIN <span id="gstReqMark" style="font-size:10px;color:#dc2626;display:none;">*</span> <span id="gstLookupStatus" style="font-size:10px;margin-left:4px;"></span></label>
+            <div style="display:flex;gap:7px;align-items:stretch;">
+              <input type="text" name="new_customer_gstin" class="fc" id="cliGSTIN" placeholder="e.g. 24XXXXX1234X1ZX" style="text-transform:uppercase;flex:1;" maxlength="15" oninput="this.value=this.value.toUpperCase()">
+              <button type="button" onclick="lookupGST()" class="btn bin bsm" id="gstLookupBtn" title="Auto-fetch company details from GSTIN" style="white-space:nowrap;flex-shrink:0;">
+                <i class="fas fa-search"></i> Lookup
+              </button>
+            </div>
+            <div id="gstLookupMsg" style="font-size:11px;margin-top:4px;display:none;"></div>
+          </div>
+          <div class="fg">
+            <label>State *</label>
+            <input type="text" name="new_customer_state" class="fc" id="cliState" placeholder="Gujarat" value="Gujarat" required>
+          </div>
+          <div class="fg">
+            <label>State Code *</label>
+            <input type="text" name="new_customer_state_code" class="fc" id="cliStateCode" placeholder="24" value="24" required>
+          </div>
+          <div class="fg" style="grid-column:1/-1">
+            <label>Address *</label>
+            <input type="text" name="new_customer_address" class="fc" id="cliAddress" placeholder="Full Address" required>
+          </div>
+          <div class="fg">
+            <label>Email</label>
+            <input type="email" name="new_customer_email" class="fc" id="cliEmail" placeholder="email@company.com">
+          </div>
+          <div class="fg">
+            <label>Phone *</label>
+            <input type="text" name="new_customer_phone" class="fc" id="cliPhone" placeholder="Phone Number" required>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--mut);margin-top:10px;"><i class="fas fa-info-circle"></i> Select existing client to auto-fill. Leave Name blank to use selected client without re-saving.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINE ITEMS -->
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="fas fa-list" style="color:#2563eb"></i>Line Items</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="quickAdd" class="fc fc-sm" onchange="quickAddItem()" style="width:200px;">
+          <option value="">+ Quick Add from Catalog</option>
+          {% for it in items %}
+          <option value="{{ it.id }}" data-name="{{ it.name }}" data-desc="{{ it.description }}" data-hsn="{{ it.hsn_sac }}" data-rate="{{ it.rate }}" data-tax="{{ it.tax }}" data-unit="{{ it.unit }}">
+            {{ it.name }} — ₹{{ '{:,.0f}'.format(it.rate) }}
+          </option>
+          {% endfor %}
+        </select>
+        <button type="button" onclick="addRow()" class="btn bout bsm"><i class="fas fa-plus"></i>Add Row</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;padding:0;">
+      <table class="itbl" id="itemsTable" style="min-width:750px;">
+        <thead>
+          <tr>
+            <th style="width:34px;">SR.</th>
+            <th style="min-width:180px;">DESCRIPTION</th>
+            <th style="width:80px;">HSN/SAC</th>
+            <th style="width:60px;">QTY</th>
+            <th style="width:65px;">UNIT</th>
+            <th style="width:100px;">RATE</th>
+            <th style="width:60px;">DISC%</th>
+            <th class="gst-col" style="width:65px;">GST%</th>
+            <th class="gst-col" style="width:80px;">GST AMT</th>
+            <th style="width:95px;">AMOUNT</th>
+            <th style="width:32px;"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody">
+          {% if doc and doc['items'] %}
+            {% for item in doc['items'] %}
+            <tr>
+              <td style="text-align:center;color:var(--mut);font-size:11px;" class="rownum">{{ loop.index }}</td>
+              <td>
+                <input type="text" name="item_name[]" value="{{ item.name }}" placeholder="Item name" oninput="calcRow(this)" required>
+                <input type="text" name="item_desc[]" value="{{ item.description }}" placeholder="Details (optional)" style="margin-top:3px;font-size:11.5px;color:#64748b;">
+              </td>
+              <td><input type="text" name="item_hsn[]" value="{{ item.hsn_sac }}"></td>
+              <td><input type="number" name="item_qty[]" value="{{ item.qty }}" min="0" step="any" oninput="calcRow(this)"></td>
+              <td><select name="item_unit[]"><option {{ 'selected' if item.unit=='nos' }}>nos</option><option {{ 'selected' if item.unit=='pcs' }}>pcs</option><option {{ 'selected' if item.unit=='PCs' }}>PCs</option><option {{ 'selected' if item.unit=='hr' }}>hr</option><option {{ 'selected' if item.unit=='day' }}>day</option><option {{ 'selected' if item.unit=='month' }}>month</option></select></td>
+              <td><input type="number" name="item_rate[]" value="{{ item.rate }}" min="0" step="any" oninput="calcRow(this)"></td>
+              <td><input type="number" name="item_discount[]" value="{{ item.discount }}" min="0" max="100" oninput="calcRow(this)"></td>
+              <td class="gst-col">
+                <select name="item_tax[]" onchange="calcRow(this)">
+                  <option value="0" {{ 'selected' if item.tax==0 }}>0%</option>
+                  <option value="5" {{ 'selected' if item.tax==5 }}>5%</option>
+                  <option value="12" {{ 'selected' if item.tax==12 }}>12%</option>
+                  <option value="18" {{ 'selected' if item.tax==18 }}>18%</option>
+                  <option value="28" {{ 'selected' if item.tax==28 }}>28%</option>
+                </select>
+              </td>
+              <td class="iramt gst-amt gst-col">{{ '{:.2f}'.format(item.cgst + item.sgst) }}</td>
+              <td class="iramt row-amt">{{ '{:.2f}'.format(item.amount) }}</td>
+              <td><button type="button" class="delrow" onclick="removeRow(this)"><i class="fas fa-times"></i></button></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+          <tr>
+            <td style="text-align:center;color:var(--mut);font-size:11px;" class="rownum">1</td>
+            <td>
+              <input type="text" name="item_name[]" placeholder="Item name" oninput="calcRow(this)" required>
+              <input type="text" name="item_desc[]" placeholder="Details (optional)" style="margin-top:3px;font-size:11.5px;color:#64748b;">
+            </td>
+            <td><input type="text" name="item_hsn[]" placeholder="123456"></td>
+            <td><input type="number" name="item_qty[]" value="1" min="0" step="any" oninput="calcRow(this)" required></td>
+            <td><select name="item_unit[]"><option>nos</option><option>pcs</option><option>PCs</option><option>hr</option><option>day</option><option>month</option></select></td>
+            <td><input type="number" name="item_rate[]" value="0" min="0" step="any" oninput="calcRow(this)" required></td>
+            <td><input type="number" name="item_discount[]" value="0" min="0" max="100" oninput="calcRow(this)"></td>
+            <td class="gst-col"><select name="item_tax[]" onchange="calcRow(this)"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option></select></td>
+            <td class="iramt gst-amt gst-col">0.00</td>
+            <td class="iramt row-amt">0.00</td>
+            <td><button type="button" class="delrow" onclick="removeRow(this)"><i class="fas fa-times"></i></button></td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    <!-- TOTALS -->
+    <div style="padding:16px 18px 18px;border-top:1px solid #f1f5f9;">
+      <div style="display:flex;justify-content:flex-end;">
+        <div class="totbox" style="min-width:300px;">
+          <div class="trow"><span class="tlbl">Subtotal</span><span class="tval" id="subtotalDisp">₹0.00</span></div>
+          <div class="trow" id="gstBreakRow" style="display:none;">
+            <span class="tlbl">CGST</span><span class="tval" id="cgstDispMain">₹0.00</span>
+          </div>
+          <div class="trow" id="sgstBreakRow" style="display:none;">
+            <span class="tlbl">SGST</span><span class="tval" id="sgstDispMain">₹0.00</span>
+          </div>
+          <div class="trow" id="gstRow"><span class="tlbl">Total GST</span><span class="tval" id="gstDisp">₹0.00</span></div>
+          <div class="grand-row">
+            <span class="gl">Grand Total</span>
+            <span class="gv" id="grandDisp">₹0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES & TERMS -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-sticky-note" style="color:#2563eb"></i>Notes / Terms</div></div>
+    <div class="card-bd">
+      <div class="frow f2">
+        <div class="fg">
+          <label>Customer Notes</label>
+          <textarea name="notes" class="fc" rows="3" placeholder="Looking forward for your business.">{{ doc.notes if doc else 'Looking forward for your business.' }}</textarea>
+        </div>
+        <div class="fg">
+          <label>Terms & Conditions</label>
+          <textarea name="terms" class="fc" rows="3" placeholder="Delivery terms, payment terms...">{{ doc.terms if doc else settings.terms }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /LEFT -->
+
+<!-- RIGHT SIDEBAR -->
+<div style="position:sticky;top:72px;display:flex;flex-direction:column;gap:14px;">
+
+  <!-- ACTIONS -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-bolt" style="color:#f59e0b"></i>Actions</div></div>
+    <div class="card-bd" style="display:flex;flex-direction:column;gap:9px;padding:14px 16px;">
+      <button type="submit" class="btn bp" style="width:100%;justify-content:center;padding:11px;font-size:14px;">
+        <i class="fas fa-save"></i>{{ 'Update' if doc else 'Save' }} {{ doc_type|title }}
+      </button>
+      {% if doc %}
+      <a href="/preview/{{ doc_type }}/{{ doc.id }}" class="btn bout" style="width:100%;justify-content:center;" target="_blank">
+        <i class="fas fa-eye"></i>Preview PDF
+      </a>
+      <a href="/pdf/{{ doc_type }}/{{ doc.id }}" class="btn bin" style="width:100%;justify-content:center;" target="_blank">
+        <i class="fas fa-file-pdf"></i>Download PDF
+      </a>
+      {% endif %}
+      <a href="/{{ doc_type }}s" class="btn bout" style="width:100%;justify-content:center;">
+        <i class="fas fa-arrow-left"></i>Cancel
+      </a>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-calculator" style="color:#7c3aed"></i>Summary</div></div>
+    <div class="card-bd" style="padding:14px 16px;">
+      <div class="trow"><span class="tlbl">Subtotal</span><span class="tval" id="subtotalDisp2">₹0.00</span></div>
+      <div class="trow" id="cgstRow"><span class="tlbl">CGST</span><span class="tval" id="cgstDisp">₹0.00</span></div>
+      <div class="trow" id="sgstRow"><span class="tlbl">SGST</span><span class="tval" id="sgstDisp">₹0.00</span></div>
+      <div style="height:1px;background:#e2e8f0;margin:8px 0;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:14px;font-weight:800;">Total</span>
+        <span id="totalDisp" style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;color:#2563eb;">₹0.00</span>
+      </div>
+    </div>
+  </div>
+
+  {% if doc %}
+  <!-- CONVERT -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-exchange-alt" style="color:#16a34a"></i>Convert To</div></div>
+    <div class="card-bd" style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;">
+      {% if doc_type == 'quotation' %}
+      <form method="POST" action="/quotations/convert/{{ doc.id }}">
+        <input type="hidden" name="target" value="proforma">
+        <button type="submit" class="btn bwn" style="width:100%;justify-content:center;"><i class="fas fa-file-invoice"></i>→ Proforma Invoice</button>
+      </form>
+      <form method="POST" action="/quotations/convert/{{ doc.id }}">
+        <input type="hidden" name="target" value="invoice">
+        <button type="submit" class="btn bok" style="width:100%;justify-content:center;"><i class="fas fa-receipt"></i>→ Tax Invoice</button>
+      </form>
+      {% elif doc_type == 'proforma' %}
+      <form method="POST" action="/proformas/convert/{{ doc.id }}">
+        <button type="submit" class="btn bok" style="width:100%;justify-content:center;"><i class="fas fa-receipt"></i>→ Tax Invoice</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /RIGHT -->
+
+</div><!-- /grid -->
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function calcRow(el) {
+  const row = el.closest('tr');
+  const qty = parseFloat(row.querySelector('[name="item_qty[]"]').value)||0;
+  const rate = parseFloat(row.querySelector('[name="item_rate[]"]').value)||0;
+  const disc = parseFloat(row.querySelector('[name="item_discount[]"]').value)||0;
+  const tax = parseFloat(row.querySelector('[name="item_tax[]"]').value)||0;
+  const gstOn = document.getElementById('gstToggle').checked;
+  const taxable = qty*rate*(1-disc/100);
+  const gstAmt = gstOn ? taxable*tax/100 : 0;
+  const total = taxable + gstAmt;
+  row.querySelector('.gst-amt').textContent = gstAmt.toFixed(2);
+  row.querySelector('.row-amt').textContent = total.toFixed(2);
+  calcTotals();
+}
+
+function calcTotals() {
+  const gstOn = document.getElementById('gstToggle').checked;
+  let sub=0, gst=0;
+  document.querySelectorAll('#itemsBody tr').forEach(row=>{
+    const qty=parseFloat(row.querySelector('[name="item_qty[]"]')?.value)||0;
+    const rate=parseFloat(row.querySelector('[name="item_rate[]"]')?.value)||0;
+    const disc=parseFloat(row.querySelector('[name="item_discount[]"]')?.value)||0;
+    const tax=parseFloat(row.querySelector('[name="item_tax[]"]')?.value)||0;
+    const taxable=qty*rate*(1-disc/100);
+    sub+=taxable;
+    if(gstOn) gst+=taxable*tax/100;
+  });
+  const total=sub+gst;
+  const fmt=v=>'₹'+v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('subtotalDisp').textContent=fmt(sub);
+  document.getElementById('subtotalDisp2').textContent=fmt(sub);
+  document.getElementById('gstDisp').textContent=fmt(gst);
+  document.getElementById('cgstDisp').textContent=fmt(gst/2);
+  document.getElementById('sgstDisp').textContent=fmt(gst/2);
+  if(document.getElementById('cgstDispMain')) document.getElementById('cgstDispMain').textContent=fmt(gst/2);
+  if(document.getElementById('sgstDispMain')) document.getElementById('sgstDispMain').textContent=fmt(gst/2);
+  document.getElementById('grandDisp').textContent=fmt(total);
+  document.getElementById('totalDisp').textContent=fmt(total);
+  // Toggle GST rows
+  const show = gstOn ? 'flex' : 'none';
+  const hide = gstOn ? 'none' : 'flex';
+  document.getElementById('gstRow').style.display=show;
+  document.getElementById('cgstRow').style.display=show;
+  document.getElementById('sgstRow').style.display=show;
+  if(document.getElementById('gstBreakRow')) document.getElementById('gstBreakRow').style.display=show;
+  if(document.getElementById('sgstBreakRow')) document.getElementById('sgstBreakRow').style.display=show;
+  // Toggle GST columns in item table
+  document.querySelectorAll('.gst-col').forEach(el=>{el.style.display=gstOn?'':'none';});
+}
+
+function updateGSTStatus() {
+  const on=document.getElementById('gstToggle').checked;
+  document.getElementById('gstStatus').textContent=on?'GST Enabled ✓':'GST Disabled';
+  document.getElementById('gstStatus').style.color=on?'#16a34a':'#dc2626';
+  document.querySelectorAll('#itemsBody tr').forEach(row=>{
+    const el=row.querySelector('[name="item_qty[]"]');
+    if(el) calcRow(el);
+  });
+}
+
+function addRow(data={}) {
+  const tbody=document.getElementById('itemsBody');
+  const n=tbody.rows.length+1;
+  const gstOn=document.getElementById('gstToggle').checked;
+  const gstVis=gstOn?'':'display:none;';
+  const tr=document.createElement('tr');
+  tr.innerHTML=`
+    <td style="text-align:center;color:var(--mut);font-size:11px;" class="rownum">${n}</td>
+    <td>
+      <input type="text" name="item_name[]" placeholder="Item name" value="${data.name||''}" oninput="calcRow(this)" required>
+      <input type="text" name="item_desc[]" placeholder="Details (optional)" value="${data.desc||''}" style="margin-top:3px;font-size:11.5px;color:#64748b;">
+    </td>
+    <td><input type="text" name="item_hsn[]" value="${data.hsn||''}"></td>
+    <td><input type="number" name="item_qty[]" value="1" min="0" step="any" oninput="calcRow(this)"></td>
+    <td><select name="item_unit[]"><option ${data.unit=='nos'?'selected':''}>nos</option><option ${data.unit=='pcs'?'selected':''}>pcs</option><option ${data.unit=='PCs'?'selected':''}>PCs</option><option ${data.unit=='hr'?'selected':''}>hr</option><option ${data.unit=='day'?'selected':''}>day</option><option ${data.unit=='month'?'selected':''}>month</option></select></td>
+    <td><input type="number" name="item_rate[]" value="${data.rate||0}" min="0" step="any" oninput="calcRow(this)"></td>
+    <td><input type="number" name="item_discount[]" value="0" min="0" max="100" oninput="calcRow(this)"></td>
+    <td class="gst-col" style="${gstVis}">
+      <select name="item_tax[]" onchange="calcRow(this)">
+        <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option>
+        <option value="18" ${!data.tax||data.tax==18?'selected':''}>18%</option>
+        <option value="28" ${data.tax==28?'selected':''}>28%</option>
+      </select>
+    </td>
+    <td class="iramt gst-amt gst-col" style="${gstVis}">0.00</td>
+    <td class="iramt row-amt">0.00</td>
+    <td><button type="button" class="delrow" onclick="removeRow(this)"><i class="fas fa-times"></i></button></td>
+  `;
+  tbody.appendChild(tr);
+  if(data.rate) calcRow(tr.querySelector('[name="item_qty[]"]'));
+  updateRowNums();
+}
+
+function removeRow(btn) {
+  const tbody=document.getElementById('itemsBody');
+  if(tbody.rows.length<=1) return;
+  btn.closest('tr').remove();
+  updateRowNums();
+  calcTotals();
+}
+
+function updateRowNums() {
+  document.querySelectorAll('#itemsBody tr').forEach((r,i)=>{
+    const n=r.querySelector('.rownum');
+    if(n) n.textContent=i+1;
+  });
+}
+
+function quickAddItem() {
+  const sel=document.getElementById('quickAdd');
+  const opt=sel.selectedOptions[0];
+  if(!opt.value) return;
+  let target=null;
+  for(const row of document.querySelectorAll('#itemsBody tr')) {
+    if(!row.querySelector('[name="item_name[]"]').value) { target=row; break; }
+  }
+  if(target) {
+    target.querySelector('[name="item_name[]"]').value=opt.dataset.name;
+    target.querySelector('[name="item_desc[]"]').value=opt.dataset.desc;
+    target.querySelector('[name="item_hsn[]"]').value=opt.dataset.hsn;
+    target.querySelector('[name="item_rate[]"]').value=opt.dataset.rate;
+    const ts=target.querySelector('[name="item_tax[]"]');
+    for(const o of ts.options){if(o.value==opt.dataset.tax)o.selected=true;}
+    const us=target.querySelector('[name="item_unit[]"]');
+    for(const o of us.options){if(o.value==opt.dataset.unit)o.selected=true;}
+    calcRow(target.querySelector('[name="item_qty[]"]'));
+  } else {
+    addRow({name:opt.dataset.name,desc:opt.dataset.desc,hsn:opt.dataset.hsn,rate:opt.dataset.rate,tax:parseFloat(opt.dataset.tax),unit:opt.dataset.unit});
+  }
+  sel.value='';
+}
+
+function loadExistingClient() {
+  const sel=document.getElementById('custSelect');
+  const opt=sel.selectedOptions[0];
+  if(!opt.value) return;
+  document.getElementById('cliName').value=opt.dataset.name||'';
+  document.getElementById('cliCompany').value=opt.dataset.company||'';
+  document.getElementById('cliGSTIN').value=opt.dataset.gstin||'';
+  document.getElementById('cliState').value=opt.dataset.state||'Gujarat';
+  document.getElementById('cliStateCode').value=opt.dataset.stateCode||'24';
+  document.getElementById('cliAddress').value=opt.dataset.address||'';
+  document.getElementById('cliEmail').value=opt.dataset.email||'';
+  document.getElementById('cliPhone').value=opt.dataset.phone||'';
+  const typeEl=document.getElementById('clientType');
+  if(opt.dataset.type){for(const o of typeEl.options){if(o.value==opt.dataset.type)o.selected=true;}}
+  toggleGSTField();
+}
+
+function toggleGSTField() {
+  const type = document.getElementById('clientType')?.value || 'individual';
+  const gstField = document.getElementById('gstinField');
+  const gstInput = document.getElementById('cliGSTIN');
+  const reqMark = document.getElementById('gstReqMark');
+  const isBusiness = type === 'business';
+  if (gstField) gstField.style.display = '';
+  if (gstInput) gstInput.required = isBusiness;
+  if (reqMark) reqMark.style.display = isBusiness ? '' : 'none';
+}
+
+async function lookupGST() {
+  const gstin = document.getElementById('cliGSTIN').value.trim().toUpperCase();
+  if(!gstin || gstin.length < 15) {
+    showGSTMsg('Enter a valid 15-character GSTIN first.', 'error');
+    return;
+  }
+  const btn = document.getElementById('gstLookupBtn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Looking up...';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch('/api/gst-lookup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({gstin})
+    });
+    const data = await resp.json();
+    if(data.success) {
+      // Auto-fill state and state code always
+      if(data.state_code) document.getElementById('cliStateCode').value = data.state_code;
+      if(data.state) document.getElementById('cliState').value = data.state;
+
+      // Fill company details if available from API
+      if(data.company_name) {
+        document.getElementById('cliCompany').value = data.company_name;
+        if(!document.getElementById('cliName').value)
+          document.getElementById('cliName').value = data.trade_name || data.company_name;
+      }
+      if(data.address) document.getElementById('cliAddress').value = data.address;
+
+      if(data.partial) {
+        showGSTMsg('✓ ' + (data.message || 'State auto-detected from GSTIN.'), 'info');
+      } else {
+        showGSTMsg('✓ Company details fetched successfully!', 'success');
+      }
+    } else {
+      showGSTMsg('✗ ' + (data.error || 'GSTIN lookup failed.'), 'error');
+    }
+  } catch(e) {
+    showGSTMsg('✗ Network error during lookup.', 'error');
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
+function showGSTMsg(msg, type) {
+  const el = document.getElementById('gstLookupMsg');
+  const colors = {success:'#15803d', error:'#b91c1c', info:'#0369a1'};
+  el.textContent = msg;
+  el.style.color = colors[type] || '#64748b';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+let dueDateManuallyEdited = false;
+
+function markDueDateManual() {
+  dueDateManuallyEdited = true;
+}
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+function applyPaymentTerms(force=false) {
+  const termsEl = document.getElementById('paymentTerms');
+  const dueEl = document.getElementById('dueDate');
+  const dateEl = document.querySelector('input[name="date"]');
+  if (!termsEl || !dueEl || !dateEl || !dateEl.value) return;
+  if (dueDateManuallyEdited && !force) return;
+
+  const dayMap = {
+    due_on_receipt: 0,
+    net_15: 15,
+    net_30: 30,
+    net_40: 40,
+    net_60: 60,
+  };
+  const days = dayMap[termsEl.value] ?? 0;
+  const due = addDays(dateEl.value, days);
+  if (due) dueEl.value = due;
+}
+
+function updatePaymentFields() {
+  const statusEl = document.getElementById('paymentStatus');
+  const amountWrap = document.getElementById('amountPaidWrap');
+  const amountEl = document.getElementById('amountPaid');
+  const onlineWrap = document.getElementById('onlinePaidWrap');
+  const cashWrap = document.getElementById('cashPaidWrap');
+  const onlineEl = document.getElementById('onlinePaid');
+  const cashEl = document.getElementById('cashPaid');
+  const totalEl = document.getElementById('totalDisp');
+  const balanceText = document.getElementById('balanceDueText');
+  if (!statusEl || !amountEl || !amountWrap || !totalEl || !balanceText) return;
+
+  const total = parseFloat((totalEl.textContent || '0').replace(/[^0-9.]/g, '')) || 0;
+  const status = statusEl.value;
+  let paid = parseFloat(amountEl.value) || 0;
+
+  if (status === 'paid') {
+    paid = total;
+    amountEl.value = total.toFixed(2);
+    amountEl.readOnly = true;
+    amountWrap.style.opacity = '0.75';
+    if (onlineWrap) onlineWrap.style.display = 'none';
+    if (cashWrap) cashWrap.style.display = 'none';
+    if (onlineEl) { onlineEl.required = false; onlineEl.value = '0.00'; onlineEl.readOnly = true; }
+    if (cashEl) { cashEl.required = false; cashEl.value = '0.00'; cashEl.readOnly = true; }
+  } else if (status === 'unpaid') {
+    paid = 0;
+    amountEl.value = '0.00';
+    amountEl.readOnly = true;
+    amountWrap.style.opacity = '0.75';
+    if (onlineWrap) onlineWrap.style.display = 'none';
+    if (cashWrap) cashWrap.style.display = 'none';
+    if (onlineEl) { onlineEl.required = false; onlineEl.value = '0.00'; onlineEl.readOnly = true; }
+    if (cashEl) { cashEl.required = false; cashEl.value = '0.00'; cashEl.readOnly = true; }
+  } else {
+    let online = parseFloat(onlineEl?.value || '0') || 0;
+    let cash = parseFloat(cashEl?.value || '0') || 0;
+    if (online < 0) online = 0;
+    if (cash < 0) cash = 0;
+    if (onlineEl) {
+      onlineEl.value = online.toFixed(2);
+      onlineEl.readOnly = false;
+    }
+    if (cashEl) {
+      cashEl.value = cash.toFixed(2);
+      cashEl.readOnly = false;
+    }
+    paid = online + cash;
+    if (paid > total) paid = total;
+    amountEl.value = paid.toFixed(2);
+    amountEl.readOnly = false;
+    amountWrap.style.opacity = '1';
+    if (onlineWrap) onlineWrap.style.display = '';
+    if (cashWrap) cashWrap.style.display = '';
+    if (onlineEl) onlineEl.required = true;
+    if (cashEl) cashEl.required = true;
+  }
+
+  const balance = Math.max(total - paid, 0);
+  balanceText.textContent = '₹' + balance.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  // Add listeners to update amount received when paid online/cash changes
+  if (onlineEl && cashEl) {
+    onlineEl.oninput = cashEl.oninput = function() {
+      let online = parseFloat(onlineEl.value) || 0;
+      let cash = parseFloat(cashEl.value) || 0;
+      let paid = online + cash;
+      if (paid > total) paid = total;
+      amountEl.value = paid.toFixed(2);
+      const balance = Math.max(total - paid, 0);
+      balanceText.textContent = '₹' + balance.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    };
+  }
+}
+
+// Init
+const initialCustSel = document.getElementById('custSelect');
+if (initialCustSel && initialCustSel.value) {
+  loadExistingClient();
+}
+updateGSTStatus();
+calcTotals();
+applyPaymentTerms(true);
+updatePaymentFields();
+
+const issueDateEl = document.querySelector('input[name="date"]');
+if (issueDateEl) {
+  issueDateEl.addEventListener('change', () => {
+    dueDateManuallyEdited = false;
+    applyPaymentTerms(true);
+  });
+}
+
+const formEl = document.getElementById('docForm');
+if (formEl) {
+  formEl.addEventListener('submit', (e) => {
+    updatePaymentFields();
+
+    const custSel = document.getElementById('custSelect');
+    const cliName = document.getElementById('cliName');
+    if ((!custSel || !custSel.value) && (!cliName || !cliName.value.trim())) {
+      e.preventDefault();
+      alert('Please select an existing client or enter new client name.');
+      return;
+    }
+
+    const typeEl = document.getElementById('clientType');
+    const gstEl = document.getElementById('cliGSTIN');
+    if ((!custSel || !custSel.value) && typeEl && typeEl.value === 'business' && (!gstEl || !gstEl.value.trim())) {
+      e.preventDefault();
+      alert('GSTIN is required for business clients.');
+      return;
+    }
+
+    const firstItem = document.querySelector('[name="item_name[]"]');
+    if (!firstItem || !firstItem.value.trim()) {
+      e.preventDefault();
+      alert('Please add at least one item name.');
+      return;
+    }
+
+    const statusEl = document.getElementById('paymentStatus');
+    if (statusEl && statusEl.value === 'partial') {
+      const online = parseFloat(document.getElementById('onlinePaid')?.value || '0') || 0;
+      const cash = parseFloat(document.getElementById('cashPaid')?.value || '0') || 0;
+      if ((online + cash) <= 0) {
+        e.preventDefault();
+        alert('For partially paid invoice, enter Online or Cash amount.');
+      }
+    }
+  });
+}
+</script>
+{% endblock %}
