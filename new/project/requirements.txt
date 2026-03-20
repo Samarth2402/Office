@@ -3,3 +3,4 @@ reportlab
 Pillow
 requests
 gunicorn
+qrcode
