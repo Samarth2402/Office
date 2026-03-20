@@ -1565,9 +1565,11 @@ def save_document(doc_type, existing_id=None):
     return redirect(url_for(redirect_map[doc_type]))
 
 
+# Create folders when app starts (IMPORTANT)
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(LOGO_UPLOAD_DIR, exist_ok=True)
+os.makedirs('static/pdfs', exist_ok=True)
+
 if __name__ == '__main__':
-    os.makedirs(DATA_DIR, exist_ok=True)
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    os.makedirs(LOGO_UPLOAD_DIR, exist_ok=True)
-    os.makedirs('static/pdfs', exist_ok=True)
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
