@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if customer else 'Add' }} Client{% endblock %}
+{% block page_title %}{{ 'Edit' if customer else 'Add New' }} Client{% endblock %}
+{% block breadcrumb %}Client Management{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px;">
+  <div class="card-hd">
+    <div class="card-title"><i class="fas fa-user-plus" style="color:#2563eb"></i>Client Information</div>
+    {% if customer %}<span class="badge bbl-b">Editing</span>{% endif %}
+  </div>
+  <div class="card-bd">
+    <form method="POST">
+      <!-- Type Selector -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:10.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Customer Type</div>
+        <div style="display:flex;gap:14px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--brd);border-radius:8px;transition:all .15s;" id="indLabel">
+            <input type="radio" name="type" value="individual" id="typeInd" {{ 'checked' if not customer or customer.type=='individual' }} onchange="toggleType()" style="accent-color:#2563eb;">
+            <i class="fas fa-user" style="color:#2563eb;"></i><span style="font-weight:600;font-size:13px;">Individual</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--brd);border-radius:8px;transition:all .15s;" id="bizLabel">
+            <input type="radio" name="type" value="business" id="typeBiz" {{ 'checked' if customer and customer.type=='business' }} onchange="toggleType()" style="accent-color:#2563eb;">
+            <i class="fas fa-building" style="color:#2563eb;"></i><span style="font-weight:600;font-size:13px;">Business</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="frow f2" style="gap:13px;">
+        <div class="fg">
+          <label>Full Name *</label>
+          <input type="text" name="name" class="fc" required value="{{ customer.name if customer else '' }}" placeholder="Mr. Rahul Shah">
+        </div>
+        <div class="fg" id="companyFld" style="{{ '' if not customer or customer.type=='business' else 'display:none' }}">
+          <label>Company Name</label>
+          <input type="text" name="company" class="fc" value="{{ customer.company if customer else '' }}" placeholder="Company Pvt. Ltd.">
+        </div>
+        <div class="fg">
+          <label>Phone</label>
+          <input type="text" name="phone" class="fc" value="{{ customer.phone if customer else '' }}" placeholder="+91 9876543210">
+        </div>
+        <div class="fg">
+          <label>Email</label>
+          <input type="email" name="email" class="fc" value="{{ customer.email if customer else '' }}" placeholder="email@example.com">
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Address</label>
+          <input type="text" name="address" class="fc" value="{{ customer.address if customer else '' }}" placeholder="Street, Area, Landmark">
+        </div>
+        <div class="fg">
+          <label>City</label>
+          <input type="text" name="city" class="fc" value="{{ customer.city if customer else '' }}" placeholder="Ahmedabad">
+        </div>
+        <div class="fg">
+          <label>State</label>
+          <input type="text" name="state" class="fc" value="{{ customer.state if customer else 'Gujarat' }}">
+        </div>
+        <div class="fg">
+          <label>State Code</label>
+          <input type="text" name="state_code" class="fc" value="{{ customer.state_code if customer else '24' }}">
+        </div>
+        <div class="fg">
+          <label>PAN</label>
+          <input type="text" name="pan" class="fc" value="{{ customer.pan if customer else '' }}" placeholder="ABCDE1234F" style="text-transform:uppercase">
+        </div>
+      </div>
+
+      <!-- GST Section -->
+      <div id="gstSection" style="{{ '' if customer and customer.type=='business' else 'display:none' }}; margin-top:16px;padding:16px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;">
+        <div style="font-size:10.5px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;"><i class="fas fa-file-invoice"></i> GST Information (Business Only)</div>
+        <div class="fg">
+          <label>GSTIN</label>
+          <input type="text" name="gstin" class="fc" value="{{ customer.gstin if customer else '' }}" placeholder="22AAAAA0000A1Z5" style="text-transform:uppercase;font-family:monospace;">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button type="submit" class="btn bp"><i class="fas fa-save"></i>{{ 'Update Client' if customer else 'Add Client' }}</button>
+        <a href="/customers" class="btn bout"><i class="fas fa-arrow-left"></i>Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleType(){
+  const biz=document.getElementById('typeBiz').checked;
+  document.getElementById('gstSection').style.display=biz?'block':'none';
+  document.getElementById('companyFld').style.display=biz?'block':'none';
+  document.getElementById('indLabel').style.borderColor=biz?'#e2e8f0':'#2563eb';
+  document.getElementById('bizLabel').style.borderColor=biz?'#2563eb':'#e2e8f0';
+}
+toggleType();
+</script>
+{% endblock %}

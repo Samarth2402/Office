@@ -1,0 +1,18 @@
+[
+  {
+    "id": "admin_001",
+    "email": "tilak1818mordiya9984@gmail.com",
+    "password_hash": "cbe14ee854cf53cba6a123250eed905458a55ead58257c45253df6005f74b456",
+    "role": "admin",
+    "name": "Admin",
+    "active": true
+  },
+  {
+    "id": "user_77fc4c3f",
+    "email": "ss9879086402@gmail.com",
+    "password_hash": "3732781c26240e8b3e20d39a0f363d234f2ee382d82a5cb7f4a5b2587775ef2b",
+    "role": "user",
+    "name": "samarth",
+    "active": true
+  }
+]

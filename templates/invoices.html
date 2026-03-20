@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}Invoices{% endblock %}
+{% block page_title %}Tax Invoices{% endblock %}
+{% block breadcrumb %}Document Management{% endblock %}
+{% block topbar_actions %}<a href="/invoices/new" class="btn bp bsm"><i class="fas fa-plus"></i>New Invoice</a>{% endblock %}
+{% block content %}
+{% set paid_list = invoices|selectattr('payment_status','eq','paid')|list %}
+{% set unpaid_list = invoices|rejectattr('payment_status','eq','paid')|list %}
+<div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+  <div class="scard blue"><div class="sc-lbl">Total Invoices</div><div class="sc-val">{{ invoices|length }}</div><div class="sc-sub">All time</div></div>
+  <div class="scard green"><div class="sc-lbl">Paid</div><div class="sc-val">{{ paid_list|length }}</div><div class="sc-sub">₹{{ '{:,.0f}'.format(paid_list|sum(attribute='total')) }}</div></div>
+  <div class="scard red"><div class="sc-lbl">Unpaid</div><div class="sc-val">{{ unpaid_list|length }}</div><div class="sc-sub">Outstanding</div></div>
+  <div class="scard orange"><div class="sc-lbl">Pending Amount</div><div class="sc-val" style="font-size:18px;letter-spacing:-.5px;">₹{{ '{:,.0f}'.format(pending_total) }}</div><div class="sc-sub">To collect</div></div>
+</div>
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;">
+  <div class="scard" style="background:linear-gradient(135deg,#ecfeff,#cffafe);border-color:#a5f3fc;">
+    <div class="sc-lbl">Received Amount</div>
+    <div class="sc-val" style="font-size:18px;letter-spacing:-.5px;color:#0e7490;">₹{{ '{:,.0f}'.format(received_total) }}</div>
+    <div class="sc-sub">Collected from invoices</div>
+  </div>
+  <div class="scard" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-color:#a7f3d0;">
+    <div class="sc-lbl">Paid %</div>
+    <div class="sc-val" style="color:#047857;">{{ '{:.2f}'.format(paid_percent) }}%</div>
+    <div class="sc-sub">By received amount</div>
+  </div>
+  <div class="scard" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-color:#fed7aa;">
+    <div class="sc-lbl">Pending %</div>
+    <div class="sc-val" style="color:#c2410c;">{{ '{:.2f}'.format(pending_percent) }}%</div>
+    <div class="sc-sub">By outstanding amount</div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-hd">
+    <div class="card-title"><i class="fas fa-receipt" style="color:#2563eb"></i>All Invoices <span style="font-weight:400;color:var(--mut);font-size:12px;">({{ invoices|length }})</span></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="srch-wr"><i class="fas fa-search"></i><input type="text" class="fc fc-sm" style="width:210px;" placeholder="Search invoices..." id="srch" onkeyup="filterTbl()"></div>
+      <select class="fc fc-sm" id="statusFilter" onchange="filterStatus()" style="width:130px;">
+        <option value="">All Status</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option><option value="partial">Partial</option>
+      </select>
+    </div>
+  </div>
+  {% if invoices %}
+  <div class="tbl-wr"><table id="invTbl">
+    <thead>
+      <tr>
+        <th>Invoice #</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Due Date</th>
+        <th>Items</th>
+        <th>GST</th>
+        <th style="text-align:right">Amount</th>
+        <th>Source</th>
+        <th>Payment</th>
+        <th style="width:130px;text-align:center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for inv in invoices|reverse %}
+    <tr data-status="{{ inv.payment_status }}">
+      <td><a href="/invoices/edit/{{ inv.id }}" style="color:#2563eb;font-weight:700;text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12.5px;">{{ inv.number }}</a></td>
+      <td style="color:var(--mut);font-size:12.5px;white-space:nowrap;">{{ inv.date }}</td>
+      <td>
+        <div style="font-weight:600;">{{ customers.get(inv.customer_id,{}).get('name','—') }}</div>
+        {% if customers.get(inv.customer_id,{}).get('company') %}
+        <div style="font-size:11px;color:var(--mut2);">{{ customers.get(inv.customer_id,{}).get('company') }}</div>
+        {% endif %}
+      </td>
+      <td style="color:var(--mut);font-size:12.5px;white-space:nowrap;">{{ inv.due_date or '—' }}</td>
+      <td><span class="badge bgr-b">{{ inv['items']|length }} items</span></td>
+      <td>
+        {% if inv.get('gst_enabled', true) %}
+        <span class="badge bok-b" style="font-size:10px;"><i class="fas fa-check-circle"></i>GST</span>
+        {% else %}
+        <span class="badge bgr-b" style="font-size:10px;">No GST</span>
+        {% endif %}
+      </td>
+      <td class="amtcol">₹{{ '{:,.2f}'.format(inv.total) }}</td>
+      <td style="font-size:11.5px;color:var(--mut);">{{ inv.source_quotation if inv.source_quotation is defined else (inv.source_proforma if inv.source_proforma is defined else '—') }}</td>
+      <td><span class="badge {{ 'bok-b' if inv.payment_status=='paid' else 'bwn-b' if inv.payment_status=='partial' else 'ber-b' }}">{{ inv.payment_status|title }}</span></td>
+      <td>
+        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:center;">
+          <a href="/invoices/edit/{{ inv.id }}" class="btn bout bsm bico"><i class="fas fa-edit"></i></a>
+          <a href="/pdf/invoice/{{ inv.id }}" class="btn bsm bico" style="background:#0891b2;color:#fff;" target="_blank" title="Download PDF"><i class="fas fa-file-pdf"></i></a>
+          <a href="/preview/invoice/{{ inv.id }}" class="btn bsm bico" style="background:#7c3aed;color:#fff;" target="_blank" title="Preview PDF"><i class="fas fa-eye"></i></a>
+          {% if inv.payment_status != 'paid' %}
+          <form method="POST" action="/invoices/mark-paid/{{ inv.id }}" style="display:inline">
+            <button type="submit" class="btn bok bsm bico" title="Mark Paid"><i class="fas fa-check"></i></button>
+          </form>
+          <button type="button" class="btn bsm bico" style="background:#16a34a;color:#fff;"
+            onclick="genPayLink('{{ inv.id }}', this)"
+            title="Generate Cashfree Payment Link">
+            <i class="fas fa-link"></i>
+          </button>
+          {% endif %}
+          {% if inv.get('payment_link') %}
+          <a href="{{ inv.payment_link }}" target="_blank" class="btn bsm bico" style="background:#0891b2;color:#fff;" title="Open Payment Link">
+            <i class="fas fa-external-link-alt"></i>
+          </a>
+          {% endif %}
+          <form id="di{{ loop.index }}" method="POST" action="/invoices/delete/{{ inv.id }}" style="display:inline">
+            <button type="button" class="btn ber bsm bico" onclick="confirmDelete('di{{ loop.index }}')"><i class="fas fa-trash"></i></button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty-state"><i class="fas fa-receipt"></i><h3>No invoices yet</h3><p>Convert a quotation or proforma to invoice</p><a href="/invoices/new" class="btn bp" style="margin-top:14px"><i class="fas fa-plus"></i>New Invoice</a></div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}<script>
+function filterTbl(){
+  const q=document.getElementById('srch').value.toLowerCase();
+  const sf=document.getElementById('statusFilter').value;
+  document.querySelectorAll('#invTbl tbody tr').forEach(r=>{
+    const matchText=r.textContent.toLowerCase().includes(q);
+    const matchStatus=!sf||r.dataset.status===sf;
+    r.style.display=(matchText&&matchStatus)?'':'none';
+  });
+}
+function filterStatus(){filterTbl();}
+async function genPayLink(did, btn){
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
+  try{
+    const r=await fetch('/invoices/payment-link/'+did,{method:'POST',headers:{'Content-Type':'application/json'}});
+    const d=await r.json();
+    const link=d.payment_link||d.link;
+    if(link){
+      navigator.clipboard.writeText(link).catch(()=>{});
+      alert('Payment link generated!\n\n'+link+'\n\n(Copied to clipboard)');
+      location.reload();
+    }else{
+      alert('Error: '+(d.error||'Unknown error'));
+      btn.disabled=false; btn.innerHTML='<i class="fas fa-link"></i>';
+    }
+  }catch(e){
+    alert('Failed to generate payment link.');
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-link"></i>';
+  }
+}
+</script>{% endblock %}

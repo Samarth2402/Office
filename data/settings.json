@@ -1,0 +1,15 @@
+{
+  "bank_name": "AXIS BANK LTD.",
+  "account_number": "922020053137516",
+  "account_name": "ISOFTREND SYSTEM",
+  "branch": "RAKHIAL GJ, AHMEDABAD - 380023",
+  "ifsc": "UTIB0004021",
+  "upi": "7984823208@axisbank",
+  "signature": "sign_1459c7d3.png",
+  "logo": "main.png",
+  "gst_api_key": "b5475066324fb3848095baf57044c357",
+  "terms": "The complete design and delivery process for the Logo, Letterhead, and Visiting Card will require approximately 6-7 working days from the date of confirmation and content approval.\r\nThis includes concept creation, design revisions, and final file delivery in all required formats.\r\n\r\nIf you require a GST invoice, an additional 18% will be charged on the quoted amount.",
+  "cashfree_app_id": "",
+  "cashfree_secret": "",
+  "cashfree_env": "sandbox"
+}

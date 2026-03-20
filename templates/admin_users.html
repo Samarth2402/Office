@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}User Management – iSoftrend System{% endblock %}
+{% block page_title %}User Management{% endblock %}
+{% block breadcrumb %}Admin / Users{% endblock %}
+
+{% block content %}
+<style>
+.role-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.role-admin{background:#dbeafe;color:#1d4ed8;}
+.role-user{background:#f1f5f9;color:#475569;}
+.status-active{background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.status-inactive{background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+</style>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-hd">
+    <div class="card-title"><i class="fas fa-user-plus" style="color:#2563eb;"></i> Add New User</div>
+  </div>
+  <div class="card-bd">
+    <form method="POST" action="/admin/users/add">
+      <div class="frow f4" style="gap:14px;align-items:flex-end;">
+        <div class="fg">
+          <label>Full Name</label>
+          <input type="text" name="name" class="fc" placeholder="User's name" required>
+        </div>
+        <div class="fg">
+          <label>Email Address</label>
+          <input type="email" name="email" class="fc" placeholder="user@example.com" required>
+        </div>
+        <div class="fg">
+          <label>Password</label>
+          <input type="password" name="password" class="fc" placeholder="Min. 6 characters" required minlength="6">
+        </div>
+        <div class="fg">
+          <label>Role</label>
+          <select name="role" class="fc">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <button type="submit" class="btn bp"><i class="fas fa-user-plus"></i>Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-hd">
+    <div class="card-title"><i class="fas fa-users-cog" style="color:#2563eb;"></i> All Users</div>
+    <span style="font-size:12px;color:var(--mut);">{{ users|length }} user(s)</span>
+  </div>
+  <div class="tbl-wr">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td><strong>{{ user.name }}</strong></td>
+          <td style="color:var(--mut);font-size:12.5px;">{{ user.email }}</td>
+          <td><span class="role-badge role-{{ user.role }}">{{ user.role|capitalize }}</span></td>
+          <td>
+            {% if user.get('active', True) %}
+              <span class="status-active"><i class="fas fa-circle" style="font-size:7px;"></i> Active</span>
+            {% else %}
+              <span class="status-inactive"><i class="fas fa-circle" style="font-size:7px;"></i> Inactive</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;">
+            {% if user.id != 'admin_001' %}
+            <form method="POST" action="/admin/users/toggle/{{ user.id }}" style="display:inline;">
+              <button type="submit" class="btn bout bsm" title="{{ 'Deactivate' if user.get('active', True) else 'Activate' }}">
+                <i class="fas fa-{{ 'user-slash' if user.get('active', True) else 'user-check' }}"></i>
+                {{ 'Deactivate' if user.get('active', True) else 'Activate' }}
+              </button>
+            </form>
+            <form method="POST" action="/admin/users/delete/{{ user.id }}" style="display:inline;" onsubmit="return confirm('Delete user {{ user.name }}?')">
+              <button type="submit" class="btn ber bsm"><i class="fas fa-trash"></i>Delete</button>
+            </form>
+            {% else %}
+            <span style="font-size:11.5px;color:var(--mut2);font-style:italic;">Default Admin</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

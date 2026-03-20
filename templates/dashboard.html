@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — iSoftrend{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb %}Hello, {{ settings.company_name }} 👋{% endblock %}
+{% block topbar_actions %}{% endblock %}
+{% block content %}
+
+<!-- WELCOME BANNER -->
+<div style="background:linear-gradient(135deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%);border-radius:14px;padding:24px 28px;margin-bottom:20px;color:#fff;display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:4px;">Hello, {{ settings.company_name }} 👋</div>
+    <div style="font-size:13px;opacity:.75;">{{ settings.company_name }} — Here's your business overview</div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <a href="/quotations/new" style="padding:7px 14px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:7px;color:#fff;text-decoration:none;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'"><i class="fas fa-plus"></i>New Quotation</a>
+      <a href="/proformas/new" style="padding:7px 14px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:7px;color:#fff;text-decoration:none;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'"><i class="fas fa-plus"></i>New Proforma</a>
+      <a href="/invoices/new" style="padding:7px 14px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:7px;color:#fff;text-decoration:none;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'"><i class="fas fa-plus"></i>New Invoice</a>
+      <a href="/customers/add" style="padding:7px 14px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:7px;color:#fff;text-decoration:none;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'"><i class="fas fa-user-plus"></i>Add Client</a>
+    </div>
+  </div>
+  <i class="fas fa-chart-line" style="font-size:64px;opacity:.15;"></i>
+</div>
+
+<!-- STAT CARDS -->
+<div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
+  <div class="scard blue">
+    <div class="sc-lbl">Quotations</div>
+    <div class="sc-val">{{ quotations|length }}</div>
+    <div class="sc-sub">Total created</div>
+  </div>
+  <div class="scard orange">
+    <div class="sc-lbl">Proforma</div>
+    <div class="sc-val">{{ proformas|length }}</div>
+    <div class="sc-sub">Total created</div>
+  </div>
+  <div class="scard green">
+    <div class="sc-lbl">Invoices</div>
+    <div class="sc-val">{{ invoices|length }}</div>
+    <div class="sc-sub">Total created</div>
+  </div>
+  <div class="scard purple">
+    <div class="sc-lbl">Clients</div>
+    <div class="sc-val">{{ customers|length }}</div>
+    <div class="sc-sub">Active clients</div>
+  </div>
+</div>
+
+<!-- CHARTS ROW -->
+<div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:20px;">
+
+  <!-- MONTHLY BAR CHART -->
+  <div class="card">
+    <div class="card-hd">
+      <div>
+        <div class="card-title"><i class="fas fa-chart-bar" style="color:#2563eb"></i>Monthly Revenue Overview</div>
+        <div style="font-size:12px;color:var(--mut);margin-top:2px;">View revenue by month and document type</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;flex-wrap:wrap;">
+        <span class="badge bsm" style="background:#eaf4ff;color:#1672db;border-radius:8px;padding:4px 10px;">Quotes</span>
+        <span class="badge bsm" style="background:#ebfdf0;color:#16a34a;border-radius:8px;padding:4px 10px;">Proforma</span>
+        <span class="badge bsm" style="background:#fff6eb;color:#d97706;border-radius:8px;padding:4px 10px;">Invoices</span>
+      </div>
+    </div>
+    <div class="card-bd" style="padding:14px 18px 18px;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;font-size:12px;color:var(--mut);margin-bottom:8px;">
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#16a34a;display:inline-block;"></span>Paid / Profit</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#f59e0b;display:inline-block;"></span>Pending</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#dc2626;display:inline-block;"></span>Overdue</span>
+      </div>
+      <canvas id="barChart" height="200"></canvas>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;font-size:18px;margin-top:10px;">
+        <span style="color:#1672db;">Quotes: <strong>₹{{ '{:,.0f}'.format(quotations|sum(attribute='total')) }}</strong></span>
+        <span style="color:#16a34a;">Proforma: <strong>₹{{ '{:,.0f}'.format(proformas|sum(attribute='total')) }}</strong></span>
+        <span style="color:#d97706;">Invoices: <strong>₹{{ '{:,.0f}'.format(invoices|sum(attribute='total')) }}</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DONUT CHART -->
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="fas fa-circle-half-stroke" style="color:#7c3aed"></i>Payment Status</div>
+    </div>
+    <div class="card-bd" style="display:flex;flex-direction:column;align-items:center;padding:18px;">
+      <canvas id="donutChart" width="200" height="200" style="max-width:180px;"></canvas>
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;width:100%;">
+        {% set paid_c = invoices|selectattr('payment_status','eq','paid')|list|length %}
+        {% set unpaid_c = invoices|selectattr('payment_status','ne','paid')|list|length %}
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;"><span style="width:10px;height:10px;border-radius:2px;background:#16a34a;display:inline-block;"></span>Paid</span>
+          <span style="font-weight:700;color:#16a34a;">{{ paid_c }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;"><span style="width:10px;height:10px;border-radius:2px;background:#ef4444;display:inline-block;"></span>Unpaid</span>
+          <span style="font-weight:700;color:#ef4444;">{{ unpaid_c }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid #e2e8f0;">
+          <span style="font-size:13px;font-weight:600;">Total Revenue</span>
+          <span style="font-weight:800;font-size:15px;color:#2563eb;font-family:'Courier New',monospace;">₹{{ '{:,.0f}'.format(total_sales) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OUTSTANDING + RECENT ROWS -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+  <!-- Outstanding amounts -->
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="fas fa-rupee-sign" style="color:#d97706"></i>Financials</div></div>
+    <div class="card-bd" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;justify-content:space-between;padding:12px 14px;background:#dcfce7;border-radius:9px;align-items:center;">
+        <div><div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;">Total Received</div>
+        <div style="font-size:22px;font-weight:800;color:#15803d;font-family:'Courier New',monospace;">₹{{ '{:,.2f}'.format(paid_total) }}</div></div>
+        <i class="fas fa-check-circle" style="font-size:28px;color:#16a34a;opacity:.5;"></i>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 14px;background:#fee2e2;border-radius:9px;align-items:center;">
+        <div><div style="font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;">Outstanding</div>
+        <div style="font-size:22px;font-weight:800;color:#b91c1c;font-family:'Courier New',monospace;">₹{{ '{:,.2f}'.format(unpaid_total) }}</div></div>
+        <i class="fas fa-exclamation-circle" style="font-size:28px;color:#dc2626;opacity:.5;"></i>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="padding:10px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:9px;">
+          <div style="font-size:11px;color:#065f46;font-weight:700;text-transform:uppercase;letter-spacing:.6px;">Paid %</div>
+          <div style="font-size:20px;font-weight:800;color:#047857;">{{ '{:.2f}'.format(paid_percent) }}%</div>
+        </div>
+        <div style="padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;">
+          <div style="font-size:11px;color:#9a3412;font-weight:700;text-transform:uppercase;letter-spacing:.6px;">Pending %</div>
+          <div style="font-size:20px;font-weight:800;color:#c2410c;">{{ '{:.2f}'.format(pending_percent) }}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent invoices -->
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="fas fa-receipt" style="color:#16a34a"></i>Recent Invoices</div>
+      <a href="/invoices" class="btn bout bsm">View All</a>
+    </div>
+    <div class="tbl-wr">
+      <table>
+        <thead><tr><th>Invoice</th><th>Customer</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>
+        {% set cust_map = {} %}
+        {% for c in customers %}{% if cust_map.update({c.id: c}) %}{% endif %}{% endfor %}
+        {% for inv in invoices[-5:]|reverse %}
+        <tr>
+          <td><a href="/invoices/edit/{{ inv.id }}" style="color:#2563eb;font-weight:600;text-decoration:none;">{{ inv.number }}</a></td>
+          <td style="font-size:12.5px;">{{ cust_map.get(inv.customer_id, {}).get('name', '—') }}</td>
+          <td class="amtcol" style="font-size:12.5px;">₹{{ '{:,.0f}'.format(inv.total) }}</td>
+          <td><span class="badge {{ 'bok-b' if inv.payment_status == 'paid' else 'ber-b' }}">{{ inv.payment_status|title }}</span></td>
+        </tr>
+        {% else %}<tr><td colspan="4" style="text-align:center;color:var(--mut);padding:20px;">No invoices yet</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- RECENT QUOTATIONS -->
+<div class="card">
+  <div class="card-hd">
+    <div class="card-title"><i class="fas fa-file-alt" style="color:#2563eb"></i>Recent Quotations</div>
+    <a href="/quotations" class="btn bout bsm">View All</a>
+  </div>
+  <div class="tbl-wr">
+    <table>
+      <thead><tr><th>Quote #</th><th>Customer</th><th>Date</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for q in quotations[-5:]|reverse %}
+      <tr>
+        <td><a href="/quotations/edit/{{ q.id }}" style="color:#2563eb;font-weight:600;text-decoration:none;">{{ q.number }}</a></td>
+        <td style="font-size:12.5px;">{{ cust_map.get(q.customer_id, {}).get('name', '—') }}</td>
+        <td style="font-size:12.5px;color:var(--mut);">{{ q.date }}</td>
+        <td class="amtcol" style="font-size:12.5px;">₹{{ '{:,.0f}'.format(q.total) }}</td>
+        <td><span class="badge {{ 'bok-b' if q.status == 'invoiced' else 'bin-b' if q.status == 'sent' else 'bgr-b' }}">{{ q.status|title }}</span></td>
+        <td><a href="/pdf/quotation/{{ q.id }}" class="btn bout bsm bico" title="PDF" target="_blank"><i class="fas fa-file-pdf"></i></a></td>
+      </tr>
+      {% else %}<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:20px;">No quotations yet</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TOP CUSTOMERS CHART -->
+{% if top_customers %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-hd">
+    <div class="card-title"><i class="fas fa-trophy" style="color:#d97706"></i>Top Clients by Revenue</div>
+    <a href="/customers" class="btn bout bsm">View All</a>
+  </div>
+  <div class="card-bd" style="padding:16px 18px;">
+    <div style="position:relative;height:{{ [top_customers|length * 52, 160]|max }}px;">
+      <canvas id="topCustChart"></canvas>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const monthly = {{ monthly|tojson }};
+const topCustomers = {{ top_customers|tojson }};
+
+// Bar Chart
+const barCtx = document.getElementById('barChart').getContext('2d');
+new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: monthly.map(m => m.label),
+    datasets: [
+      {label:'Paid / Profit', data: monthly.map(m=>m.paid), backgroundColor:'rgba(22,163,74,.85)', borderRadius:5, borderSkipped:false},
+      {label:'Pending', data: monthly.map(m=>m.unpaid), backgroundColor:'rgba(245,158,11,.9)', borderRadius:5, borderSkipped:false},
+      {label:'Overdue', data: monthly.map(()=>0), backgroundColor:'rgba(220,38,38,.85)', borderRadius:5, borderSkipped:false}
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>'₹'+ctx.raw.toLocaleString('en-IN')}}},
+    scales:{
+      x:{grid:{display:false}, ticks:{font:{family:'Manrope',size:11}}},
+      y:{grid:{color:'#f1f5f9'}, ticks:{callback:v=>'₹'+v.toLocaleString('en-IN'), font:{family:'Manrope',size:11}}}
+    }
+  }
+});
+
+// Donut Chart
+const paid_total = {{ paid_total }};
+const unpaid_total = {{ unpaid_total }};
+const donutCtx = document.getElementById('donutChart').getContext('2d');
+new Chart(donutCtx, {
+  type:'doughnut',
+  data:{
+    labels:['Paid','Unpaid'],
+    datasets:[{data:[paid_total||0.001, unpaid_total||0.001], backgroundColor:['#16a34a','#ef4444'], borderWidth:0, hoverOffset:6}]
+  },
+  options:{
+    responsive:true, cutout:'72%',
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>'₹'+ctx.raw.toLocaleString('en-IN')}}}
+  }
+});
+
+// Top Customers Horizontal Bar Chart
+if(topCustomers && topCustomers.length){
+  const tcCtx = document.getElementById('topCustChart').getContext('2d');
+  new Chart(tcCtx, {
+    type:'bar',
+    data:{
+      labels: topCustomers.map(c=>c.name),
+      datasets:[{
+        label:'Revenue',
+        data: topCustomers.map(c=>c.total),
+        backgroundColor:'rgba(37,99,235,.75)',
+        borderRadius:6,
+        borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>'₹'+ctx.raw.toLocaleString('en-IN')}}},
+      scales:{
+        x:{grid:{color:'#f1f5f9'}, ticks:{callback:v=>'₹'+v.toLocaleString('en-IN'), font:{family:'Manrope',size:11}}},
+        y:{grid:{display:false}, ticks:{font:{family:'Manrope',size:12, weight:'600'}}}
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

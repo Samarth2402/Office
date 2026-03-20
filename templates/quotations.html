@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Quotations{% endblock %}
+{% block page_title %}Quotations{% endblock %}
+{% block breadcrumb %}Document Management{% endblock %}
+{% block topbar_actions %}
+<a href="/quotations/new" class="btn bp bsm"><i class="fas fa-plus"></i>New Quotation</a>
+{% endblock %}
+{% block content %}
+
+<!-- Stats Row -->
+{% set draft_count = quotations|selectattr('status','eq','draft')|list|length %}
+{% set sent_count = quotations|selectattr('status','eq','sent')|list|length %}
+{% set accepted_count = quotations|selectattr('status','eq','accepted')|list|length %}
+{% set invoiced_count = quotations|selectattr('status','eq','invoiced')|list|length %}
+<div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+  <div class="scard blue"><div class="sc-lbl">Total</div><div class="sc-val">{{ quotations|length }}</div><div class="sc-sub">All quotations</div></div>
+  <div class="scard orange"><div class="sc-lbl">Draft</div><div class="sc-val">{{ draft_count }}</div><div class="sc-sub">Pending send</div></div>
+  <div class="scard purple"><div class="sc-lbl">Sent</div><div class="sc-val">{{ sent_count }}</div><div class="sc-sub">Awaiting reply</div></div>
+  <div class="scard green"><div class="sc-lbl">Accepted</div><div class="sc-val">{{ accepted_count }}</div><div class="sc-sub">Won quotes</div></div>
+</div>
+
+<div class="card">
+  <div class="card-hd">
+    <div class="card-title"><i class="fas fa-file-alt" style="color:#2563eb"></i>All Quotations <span style="font-weight:400;color:var(--mut);font-size:12px;">({{ quotations|length }})</span></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="srch-wr"><i class="fas fa-search"></i><input type="text" class="fc fc-sm" style="width:210px;" placeholder="Search quotations..." id="srch" onkeyup="filterTbl()"></div>
+      <select class="fc fc-sm" id="statusFilter" onchange="filterStatus()" style="width:130px;">
+        <option value="">All Status</option>
+        <option value="draft">Draft</option>
+        <option value="sent">Sent</option>
+        <option value="accepted">Accepted</option>
+        <option value="invoiced">Invoiced</option>
+      </select>
+    </div>
+  </div>
+  {% if quotations %}
+  <div class="tbl-wr">
+    <table id="mainTbl">
+      <thead>
+        <tr>
+          <th>Quote #</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Items</th>
+          <th>GST</th>
+          <th style="text-align:right">Amount</th>
+          <th>Status</th>
+          <th style="width:140px;text-align:center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for q in quotations|reverse %}
+      <tr data-status="{{ q.status }}" data-search="{{ q.number }} {{ customers.get(q.customer_id,{}).get('name','') }} {{ q.date }}">
+        <td>
+          <a href="/quotations/edit/{{ q.id }}" style="color:#2563eb;font-weight:700;text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12.5px;">{{ q.number }}</a>
+        </td>
+        <td style="color:var(--mut);font-size:12.5px;white-space:nowrap;">{{ q.date }}</td>
+        <td>
+          <div style="font-weight:600;font-size:13.5px;">{{ customers.get(q.customer_id,{}).get('name','—') }}</div>
+          {% if customers.get(q.customer_id,{}).get('company') %}
+          <div style="font-size:11px;color:var(--mut2);">{{ customers.get(q.customer_id,{}).get('company') }}</div>
+          {% endif %}
+        </td>
+        <td><span class="badge bgr-b">{{ q['items']|length }} items</span></td>
+        <td>
+          {% if q.get('gst_enabled', true) %}
+          <span class="badge bok-b" style="font-size:10px;"><i class="fas fa-check-circle"></i>GST</span>
+          {% else %}
+          <span class="badge bgr-b" style="font-size:10px;">No GST</span>
+          {% endif %}
+        </td>
+        <td class="amtcol">₹{{ '{:,.2f}'.format(q.total) }}</td>
+        <td>
+          <span class="badge {{ 'bok-b' if q.status=='invoiced' else 'bin-b' if q.status=='sent' else 'bwn-b' if q.status=='accepted' else 'bgr-b' }}">
+            {{ q.status|title }}
+          </span>
+        </td>
+        <td>
+          <div style="display:flex;gap:5px;align-items:center;justify-content:center;">
+            <a href="/quotations/edit/{{ q.id }}" class="btn bout bsm bico" title="Edit"><i class="fas fa-edit"></i></a>
+            <a href="/pdf/quotation/{{ q.id }}" class="btn bsm bico" style="background:#0891b2;color:#fff;" target="_blank" title="Download PDF"><i class="fas fa-file-pdf"></i></a>
+            <a href="/preview/quotation/{{ q.id }}" class="btn bsm bico" style="background:#7c3aed;color:#fff;" target="_blank" title="Preview PDF"><i class="fas fa-eye"></i></a>
+            <div class="dropdown">
+            {% if q.status in ("converted", "invoiced") %}
+              <button type="button" class="btn bsm bico" style="background:#9ca3af;color:#fff;cursor:not-allowed;" disabled title="Already converted"><i class="fas fa-exchange-alt"></i></button>
+            {% else %}
+              <button type="button" class="btn bok bsm bico" onclick="toggleDD(this)" title="Convert"><i class="fas fa-exchange-alt"></i></button>
+              <div class="dd-menu">
+                <form method="POST" action="/quotations/convert/{{ q.id }}"><input type="hidden" name="target" value="proforma">
+                  <button type="submit" class="dd-item"><i class="fas fa-file-invoice" style="color:#f59e0b"></i>→ Proforma</button></form>
+                <form method="POST" action="/quotations/convert/{{ q.id }}"><input type="hidden" name="target" value="invoice">
+                  <button type="submit" class="dd-item"><i class="fas fa-receipt" style="color:#16a34a"></i>→ Invoice</button></form>
+              </div>
+            {% endif %}
+            </div>
+            <form id="dq{{ loop.index }}" method="POST" action="/quotations/delete/{{ q.id }}" style="display:inline">
+              <button type="button" class="btn ber bsm bico" onclick="confirmDelete('dq{{ loop.index }}')"><i class="fas fa-trash"></i></button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fas fa-file-alt"></i>
+    <h3>No quotations yet</h3>
+    <p>Create your first quotation to start billing</p>
+    <a href="/quotations/new" class="btn bp" style="margin-top:14px"><i class="fas fa-plus"></i>New Quotation</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTbl(){
+  const q=document.getElementById('srch').value.toLowerCase();
+  const sf=document.getElementById('statusFilter').value;
+  document.querySelectorAll('#mainTbl tbody tr').forEach(r=>{
+    const matchText=r.dataset.search.toLowerCase().includes(q)||r.textContent.toLowerCase().includes(q);
+    const matchStatus=!sf||r.dataset.status===sf;
+    r.style.display=(matchText&&matchStatus)?'':'none';
+  });
+}
+function filterStatus(){filterTbl();}
+</script>
+{% endblock %}

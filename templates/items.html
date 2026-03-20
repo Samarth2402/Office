@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Items{% endblock %}
+{% block page_title %}Items / Services{% endblock %}
+{% block breadcrumb %}Management{% endblock %}
+{% block topbar_actions %}<button onclick="openModal('addItemMo')" class="btn bp bsm"><i class="fas fa-plus"></i>Add Item</button>{% endblock %}
+{% block content %}
+
+{% set gst_items = items|selectattr('tax','gt',0)|list %}
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;">
+  <div class="scard blue"><div class="sc-lbl">Total Items</div><div class="sc-val">{{ items|length }}</div><div class="sc-sub">Products & services</div></div>
+  <div class="scard green"><div class="sc-lbl">GST Taxable</div><div class="sc-val">{{ gst_items|length }}</div><div class="sc-sub">With tax applied</div></div>
+  <div class="scard orange"><div class="sc-lbl">Non-Taxable</div><div class="sc-val">{{ items|length - gst_items|length }}</div><div class="sc-sub">0% GST items</div></div>
+</div>
+
+<div class="card">
+  <div class="card-hd"><div class="card-title"><i class="fas fa-boxes" style="color:#2563eb"></i>All Items <span style="font-weight:400;color:var(--mut);font-size:12px;">({{ items|length }})</span></div></div>
+  {% if items %}
+  <div class="tbl-wr"><table>
+    <thead>
+      <tr><th>Item Name</th><th>Description</th><th>HSN/SAC</th><th>Unit</th><th style="text-align:right">Rate (₹)</th><th>GST %</th><th style="text-align:center;">Action</th></tr>
+    </thead>
+    <tbody>
+    {% for it in items %}
+    <tr>
+      <td style="font-weight:700;">{{ it.name }}</td>
+      <td style="font-size:12.5px;color:var(--mut);">{{ it.description or '—' }}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12.5px;">{{ it.hsn_sac or '—' }}</td>
+      <td><span class="badge bgr-b">{{ it.unit }}</span></td>
+      <td class="amtcol">₹{{ '{:,.2f}'.format(it.rate) }}</td>
+      <td><span class="badge {{ 'bok-b' if it.tax==0 else 'bbl-b' }}">{{ it.tax|int }}%</span></td>
+      <td style="text-align:center;">
+        <form id="di{{ loop.index }}" method="POST" action="/items/delete/{{ it.id }}" style="display:inline">
+          <button type="button" class="btn ber bsm bico" onclick="confirmDelete('di{{ loop.index }}')"><i class="fas fa-trash"></i></button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty-state"><i class="fas fa-boxes"></i><h3>No items yet</h3><p>Add products or services to use in documents</p></div>
+  {% endif %}
+</div>
+
+<div class="mo-ov" id="addItemMo" onclick="if(event.target===this)closeModal('addItemMo')">
+  <div class="mo" style="max-width:520px;">
+    <div class="mo-hd"><span class="mo-title"><i class="fas fa-plus-circle" style="color:#2563eb"></i> Add New Item</span><button class="mo-x" onclick="closeModal('addItemMo')">×</button></div>
+    <form method="POST" action="/items/add">
+      <div class="mo-body">
+        <div class="frow f2" style="gap:12px;">
+          <div class="fg" style="grid-column:1/-1"><label>Item Name *</label><input type="text" name="name" class="fc" required placeholder="Logo Design"></div>
+          <div class="fg" style="grid-column:1/-1"><label>Description</label><input type="text" name="description" class="fc" placeholder="With CDR, JPEG, PNG"></div>
+          <div class="fg"><label>HSN/SAC Code</label><input type="text" name="hsn_sac" class="fc" placeholder="998311"></div>
+          <div class="fg"><label>Unit</label>
+            <select name="unit" class="fc"><option>nos</option><option>pcs</option><option>PCs</option><option>hr</option><option>day</option><option>month</option><option>kg</option></select>
+          </div>
+          <div class="fg"><label>Selling Rate (₹) *</label><input type="number" step="0.01" name="rate" class="fc" required placeholder="4000"></div>
+          <div class="fg"><label>GST Tax %</label>
+            <select name="tax" class="fc"><option value="0">0% (Non-Taxable)</option><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="mo-foot"><button type="button" onclick="closeModal('addItemMo')" class="btn bout">Cancel</button><button type="submit" class="btn bp"><i class="fas fa-save"></i>Save Item</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
